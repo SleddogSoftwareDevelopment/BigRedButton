@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -23,10 +24,10 @@ namespace Sleddog.BigRedButton
 
         public IObservable<BigRedButtonState> Listen()
         {
-            Observable.Create<BigRedButtonState>(obs =>
+            return Observable.Create<BigRedButtonState>(obs =>
             {
                 Observable
-                    .Interval(TimeSpan.FromMilliseconds(100))
+                    .Interval(TimeSpan.FromSeconds(1))
                     .Subscribe(_ =>
                     {
                         var result = QueryState();
@@ -41,30 +42,34 @@ namespace Sleddog.BigRedButton
 
                 return Disposable.Empty;
             });
-
-            return Observable.Empty<BigRedButtonState>();
         }
 
-        private BigRedButtonState? QueryState()
+        public BigRedButtonState? QueryState()
         {
-            var writeResult = device.Write(StatusReport);
+            var statusQuery = new HidReport(1) {Data = StatusReport};
 
-            if (!writeResult)
+            var isQueryWritten = device.WriteReport(statusQuery);
+
+            if (!isQueryWritten)
             {
                 return null;
             }
 
-            var readData = device.Read(100);
+            var readReport = device.ReadReport(100);
 
-            if (readData.Status != HidDeviceData.ReadStatus.Success)
+            var readData = readReport.Data;
+
+            if (readReport.ReadStatus != HidDeviceData.ReadStatus.Success)
             {
                 return null;
             }
 
-            var statusByte = readData.Data[1];
+            var statusByte = readData[0];
+
+            Debug.WriteLine(Convert.ToString(readData[0],2));
 
             var buttonIsPressed = (statusByte & (1 << 0)) == 0;
-            var lidIsOpen = (statusByte & (1 << 1)) == 1;
+            var lidIsOpen = (statusByte & (1 << 1)) != 0;
 
             return new BigRedButtonState(buttonIsPressed, lidIsOpen);
         }

@@ -10,5 +10,10 @@ namespace Sleddog.BigRedButton
             IsButtonPressed = isButtonPressed;
             IsLidOpen = isLidOpen;
         }
+
+        public override string ToString()
+        {
+            return string.Format("Button: {0} - Lid: {1}", IsButtonPressed, IsLidOpen);
+        }
     }
 }
